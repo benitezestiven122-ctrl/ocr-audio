@@ -12,24 +12,29 @@ from googletrans import Translator
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="LingoEdu | Aprende Idiomas", page_icon="📚", layout="centered")
 
-# --- ESTILOS CSS (TEMA MORADO Y MODERNO) ---
+# --- ESTILOS CSS (CORRECCIÓN DE CONTRASTE) ---
 st.markdown("""
 <style>
-    /* Fondo principal y color de texto */
+    /* Fondo principal */
     .stApp {
-        background-color: #f8f6fc;
+        background-color: #f8f6fc !important;
+    }
+    
+    /* Forzar color de texto oscuro en elementos generales (soluciona el conflicto con el modo oscuro) */
+    p, label, .stRadio label, .stMarkdown div, .stFileUploader label {
+        color: #2b2b2b !important;
     }
     
     /* Títulos */
     h1, h2, h3 {
-        color: #5a189a;
+        color: #5a189a !important;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
     
     /* Botones principales */
     .stButton>button {
-        background-color: #7b2cbf;
-        color: white;
+        background-color: #7b2cbf !important;
+        color: white !important;
         border-radius: 8px;
         border: none;
         padding: 10px 24px;
@@ -38,14 +43,19 @@ st.markdown("""
         width: 100%;
     }
     .stButton>button:hover {
-        background-color: #3c096c;
-        color: #e0aaff;
+        background-color: #3c096c !important;
+        color: #e0aaff !important;
+    }
+    .stButton>button p {
+        color: white !important; /* Asegurar que el texto del botón se mantenga blanco */
     }
     
-    /* Cajas de texto y selectores */
-    .stTextInput>div>div>input, .stTextArea>div>div>textarea, .stSelectbox>div>div>div {
+    /* Cajas de texto, selectores y zona de carga de archivos */
+    .stTextInput>div>div>input, .stTextArea>div>div>textarea, .stSelectbox>div>div>div, [data-testid="stFileUploadDropzone"] {
         border-radius: 8px;
-        border: 2px solid #e0aaff;
+        border: 2px solid #e0aaff !important;
+        background-color: #ffffff !important;
+        color: #2b2b2b !important;
     }
     
     /* Paneles de pestañas */
@@ -53,19 +63,27 @@ st.markdown("""
         gap: 10px;
     }
     .stTabs [data-baseweb="tab"] {
-        border-radius: 4px 4px 0 0;
-        padding: 10px 20px;
-        background-color: #e0aaff;
-        color: #3c096c;
+        border-radius: 4px 4px 0 0 !important;
+        padding: 10px 20px !important;
+        background-color: #e0aaff !important;
+    }
+    .stTabs [data-baseweb="tab"] p {
+        color: #3c096c !important;
+        font-weight: bold;
     }
     .stTabs [aria-selected="true"] {
-        background-color: #7b2cbf;
-        color: white;
+        background-color: #7b2cbf !important;
+    }
+    .stTabs [aria-selected="true"] p {
+        color: white !important;
     }
     
-    /* Contenedor de advertencias o info */
+    /* Contenedores de alerta/info */
     .stAlert {
         border-radius: 10px;
+    }
+    .stAlert p {
+        color: inherit !important; /* Respeta el color interno de la alerta */
     }
 </style>
 """, unsafe_allow_html=True)
@@ -106,7 +124,6 @@ def remove_files(n):
 remove_files(7)
 
 def process_image(image_buffer, apply_filter):
-    # Convertir buffer a imagen OpenCV
     bytes_data = image_buffer.getvalue()
     cv2_img = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
     
@@ -118,8 +135,8 @@ def process_image(image_buffer, apply_filter):
     return text
 
 # --- ENCABEZADO DE LA APP ---
-st.markdown("<h1 style='text-align: center;'>📚 LingoEdu</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; font-size: 1.2rem; color: #5a189a;'>Tu plataforma interactiva para extraer, traducir y escuchar vocabulario en el mundo real.</p>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; color: #5a189a !important;'>📚 LingoEdu</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; font-size: 1.2rem; color: #7b2cbf !important;'>Tu plataforma interactiva para extraer, traducir y escuchar vocabulario en el mundo real.</p>", unsafe_allow_html=True)
 st.write("---")
 
 # --- SECCIÓN 1: ENTRADA DE DATOS ---
@@ -157,7 +174,6 @@ st.markdown("### 2. Estudio y Traducción")
 if st.session_state.extracted_text.strip() == "":
     st.warning("☝️ Esperando texto. Sube una imagen o escribe algo arriba para comenzar.")
 else:
-    # Mostramos el texto a traducir para que el usuario pueda corregirlo si el OCR falló
     text_to_translate = st.text_area("Texto detectado (puedes editarlo):", value=st.session_state.extracted_text, height=100)
     
     col1, col2, col3 = st.columns(3)
@@ -176,7 +192,6 @@ else:
     with col3:
         english_accent = st.selectbox("Acento de voz", ("Defecto", "Estados Unidos", "Reino Unido", "Australia", "España", "México"))
         
-        # Mapeo de acentos (TLD)
         tld_dict = {"Defecto": "com", "Estados Unidos": "com", "Reino Unido": "co.uk", "Australia": "com.au", "España": "es", "México": "com.mx"}
         tld = tld_dict[english_accent]
 
@@ -186,14 +201,12 @@ else:
             
             st.success("¡Traducción completada!")
             
-            # Caja de resultado estilizada
             st.markdown(f"""
-            <div style="background-color: #e0aaff; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 20px;">
-                <h3 style="color: #3c096c; margin-top: 0;">{output_text}</h3>
+            <div style="background-color: #e0aaff; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 20px; border: 2px solid #7b2cbf;">
+                <h3 style="color: #3c096c !important; margin-top: 0;">{output_text}</h3>
             </div>
             """, unsafe_allow_html=True)
             
-            # Reproductor de audio
             audio_file = open(audio_path, "rb")
             audio_bytes = audio_file.read()
             st.audio(audio_bytes, format="audio/mp3", start_time=0)
