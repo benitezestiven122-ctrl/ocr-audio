@@ -1,16 +1,14 @@
-import streamlit as st
 import os
+import streamlit as st
 import time
 import glob
-import cv2
-import numpy as np
 import pytesseract
-from PIL import Image
+from PIL import Image, ImageOps
 from gtts import gTTS
 from googletrans import Translator
 
 # --- CONFIGURACIÓN DE LA PÁGINA ---
-st.set_page_config(page_title="LingoEdu | Aprende Idiomas", page_icon="📚", layout="centered")
+st.set_page_config(page_title="LingoEdu | Localizador de Idiomas", page_icon="📚", layout="centered")
 
 # --- ESTILOS CSS (CORRECCIÓN DE CONTRASTE) ---
 st.markdown("""
@@ -20,7 +18,7 @@ st.markdown("""
         background-color: #f8f6fc !important;
     }
     
-    /* Forzar color de texto oscuro en elementos generales (soluciona el conflicto con el modo oscuro) */
+    /* Forzar color de texto oscuro en elementos generales */
     p, label, .stRadio label, .stMarkdown div, .stFileUploader label {
         color: #2b2b2b !important;
     }
@@ -47,10 +45,10 @@ st.markdown("""
         color: #e0aaff !important;
     }
     .stButton>button p {
-        color: white !important; /* Asegurar que el texto del botón se mantenga blanco */
+        color: white !important;
     }
     
-    /* Cajas de texto, selectores y zona de carga de archivos */
+    /* Cajas de texto, selectores y zona de carga */
     .stTextInput>div>div>input, .stTextArea>div>div>textarea, .stSelectbox>div>div>div, [data-testid="stFileUploadDropzone"] {
         border-radius: 8px;
         border: 2px solid #e0aaff !important;
@@ -77,14 +75,6 @@ st.markdown("""
     .stTabs [aria-selected="true"] p {
         color: white !important;
     }
-    
-    /* Contenedores de alerta/info */
-    .stAlert {
-        border-radius: 10px;
-    }
-    .stAlert p {
-        color: inherit !important; /* Respeta el color interno de la alerta */
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -98,12 +88,12 @@ def text_to_speech(input_language, output_language, text, tld):
     translation = translator.translate(text, src=input_language, dest=output_language)
     trans_text = translation.text
     tts = gTTS(trans_text, lang=output_language, tld=tld, slow=False)
+    
     try:
         my_file_name = text[0:15].strip().replace(" ", "_")
     except:
         my_file_name = "audio"
     
-    # Crear carpeta temp si no existe
     if not os.path.exists("temp"):
         os.mkdir("temp")
         
@@ -120,27 +110,25 @@ def remove_files(n):
             if os.stat(f).st_mtime < now - n_days:
                 os.remove(f)
 
-# Limpiar archivos viejos
 remove_files(7)
 
 def process_image(image_buffer, apply_filter):
-    bytes_data = image_buffer.getvalue()
-    cv2_img = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
+    # Procesamiento 100% nativo con Pillow (Evita errores de OpenCV en la nube)
+    img = Image.open(image_buffer).convert("RGB")
     
     if apply_filter == 'Sí':
-        cv2_img = cv2.bitwise_not(cv2_img)
+        img = ImageOps.invert(img)
         
-    img_rgb = cv2.cvtColor(cv2_img, cv2.COLOR_BGR2RGB)
-    text = pytesseract.image_to_string(img_rgb)
+    text = pytesseract.image_to_string(img)
     return text
 
 # --- ENCABEZADO DE LA APP ---
 st.markdown("<h1 style='text-align: center; color: #5a189a !important;'>📚 LingoEdu</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; font-size: 1.2rem; color: #7b2cbf !important;'>Tu plataforma interactiva para extraer, traducir y escuchar vocabulario en el mundo real.</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; font-size: 1.2rem; color: #7b2cbf !important;'>Extrae texto de imágenes del mundo real, tradúcelo y genera audio interactivo.</p>", unsafe_allow_html=True)
 st.write("---")
 
 # --- SECCIÓN 1: ENTRADA DE DATOS ---
-st.markdown("### 1. ¿Qué deseas traducir hoy?")
+st.markdown("### 1. Selecciona tu fuente de texto")
 
 tab1, tab2, tab3 = st.tabs(["🖼️ Cargar Imagen", "📷 Usar Cámara", "✍️ Escribir Texto"])
 
@@ -191,12 +179,11 @@ else:
         
     with col3:
         english_accent = st.selectbox("Acento de voz", ("Defecto", "Estados Unidos", "Reino Unido", "Australia", "España", "México"))
-        
         tld_dict = {"Defecto": "com", "Estados Unidos": "com", "Reino Unido": "co.uk", "Australia": "com.au", "España": "es", "México": "com.mx"}
         tld = tld_dict[english_accent]
 
     if st.button("✨ Traducir y Escuchar"):
-        with st.spinner("Procesando la magia..."):
+        with st.spinner("Procesando traducción y síntesis de voz..."):
             audio_path, output_text = text_to_speech(input_language, output_language, text_to_translate, tld)
             
             st.success("¡Traducción completada!")
@@ -207,6 +194,6 @@ else:
             </div>
             """, unsafe_allow_html=True)
             
-            audio_file = open(audio_path, "rb")
-            audio_bytes = audio_file.read()
+            with open(audio_path, "rb") as audio_file:
+                audio_bytes = audio_file.read()
             st.audio(audio_bytes, format="audio/mp3", start_time=0)
